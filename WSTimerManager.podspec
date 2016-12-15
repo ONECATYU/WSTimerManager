@@ -9,7 +9,7 @@
 Pod::Spec.new do |s|
 
   s.name         = "WSTimerManager"
-  s.version      = “0.0.2"
+  s.version      = "0.0.2"
   s.summary      = "一个GCD倒计时的封装。"
   s.description  = <<-DESC
                     * 一个GCD倒计时的封装，方便使用
