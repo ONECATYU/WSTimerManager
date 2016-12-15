@@ -24,6 +24,12 @@ NSString *const tag_timer2 = @"timer2";
 
 @implementation ViewController
 
+- (void)dealloc {
+    NSLog(@"--- viewController dealloc ---");
+    [[WSTimerManager manager] invalidateTimerWithTag:tag_timer1];
+    [[WSTimerManager manager] invalidateTimerWithTag:tag_timer2];
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
 }

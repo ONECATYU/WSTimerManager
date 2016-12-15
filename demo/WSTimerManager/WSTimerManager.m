@@ -37,10 +37,34 @@
     return _timers;
 }
 
-- (dispatch_source_t)timer_t {
+- (dispatch_source_t)timer_tWithInterval:(NSTimeInterval)interval {
     dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
     dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, queue);
-    dispatch_source_set_timer(timer,dispatch_walltime(NULL, 0),1.0 * NSEC_PER_SEC, 0);
+    dispatch_source_set_timer(timer,dispatch_walltime(NULL, 0),interval * NSEC_PER_SEC, 0);
+    return timer;
+}
+
+- (dispatch_source_t)createTimerByTag:(NSString *)tag
+                         timeInterval:(NSTimeInterval)interval
+                              handler:(void(^)(NSInteger count))handler
+{
+    __block NSInteger count = 0;
+    __block dispatch_source_t timer = _timers[tag];
+    if (!timer) {
+        timer = [self timer_tWithInterval:interval];
+        _timers[tag] = timer;
+    }else{
+        return timer;
+    }
+    dispatch_source_set_event_handler(timer, ^{
+        count ++;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (handler) {
+                handler(count);
+            }
+        });
+    });
+    dispatch_resume(timer);
     return timer;
 }
 
@@ -50,33 +74,21 @@
                                   end:(void(^)())end
 {
     __block NSInteger timeOut = countdown;
-    __block dispatch_source_t timer = _timers[tag];
-    if (!timer) {
-        timer = [self timer_t];
-        _timers[tag] = timer;
-    }else{
-        return timer;
-    }
-    dispatch_source_set_event_handler(timer, ^{
+    __block dispatch_source_t timer = [self createTimerByTag:tag timeInterval:1.0 handler:^(NSInteger count) {
         if (timeOut <= 0) {
             dispatch_source_cancel(timer);
             timer = nil;
             [_timers removeObjectForKey:tag];
             if (end) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    end();
-                });
+                end();
             }
         }else{
             timeOut --;
             if (handler) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    handler(timeOut);
-                });
+                handler(timeOut);
             }
         }
-    });
-    dispatch_resume(timer);
+    }];
     return timer;
 }
 
@@ -93,22 +105,13 @@
     NSTimeInterval interval =[end_date timeIntervalSinceDate:start_date];
     __block NSInteger timeOut = interval;
     
-    __block dispatch_source_t timer = _timers[tag];
-    if (!timer) {
-        timer = [self timer_t];
-        _timers[tag] = timer;
-    }else{
-        return timer;
-    }
-    dispatch_source_set_event_handler(timer, ^{
+    __block dispatch_source_t timer = [self createTimerByTag:tag timeInterval:1.0 handler:^(NSInteger count) {
         if (timeOut <= 0) {
             dispatch_source_cancel(timer);
             timer = nil;
             [_timers removeObjectForKey:tag];
             if (end) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    end();
-                });
+                end();
             }
         }else{
             timeOut --;
@@ -118,13 +121,10 @@
                 int minute = (int)(timeOut- days * 24 * 3600 - hours * 3600) / 60;
                 int second = (int)timeOut - days * 24 * 3600 - hours * 3600 - minute * 60;
                 struct WSTime time = {days, hours, minute, second};
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    handler(time);
-                });
+                handler(time);
             }
         }
-    });
-    dispatch_resume(timer);
+    }];
     return timer;
 }
 
